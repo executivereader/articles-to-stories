@@ -14,8 +14,8 @@ def get_documents(client):
     # return them as a list of TaggedDocuments
     docs = {}
     raw_events = client.dataminr.articles.find().sort("eventTime", -1).limit(10000)
-    news_events = client.raw_articles.news.find({"pubDate": {"$ne": "None"}}).sort("pubDate", -1).limit(10000)
-    reuters_events = client.tr.articles.find({"newsMessage.itemSet.newsItem.itemMeta.versionCreated": {"$exists": True}}).sort("newsMessage.itemSet.newsItem.itemMeta.versionCreated", -1).limit(10000)
+    news_events = client.raw_articles.news.find({"pubDate": {"$ne": "None"}}).sort("pubDate", -1).limit(1000)
+    reuters_events = client.tr.articles.find({"newsMessage.itemSet.newsItem.itemMeta.versionCreated": {"$exists": True}}).sort("newsMessage.itemSet.newsItem.itemMeta.versionCreated", -1).limit(1000)
     for event in raw_events:
         tweet_id = "tweet_" + str(event["rawHTML"]["id"])
         docs[tweet_id] = event["text"]
