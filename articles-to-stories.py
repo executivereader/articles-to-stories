@@ -8,8 +8,6 @@ def sentences_to_list(text):
         transformed_text = text.replace("."," ").replace(","," ").replace(";"," ").replace("\n"," ").replace("\r"," ")
         transformed_text = transformed_text.split(" ")
         transformed_text = filter(None, transformed_text)
-        transformed_text = filter("", transformed_text)
-        transformed_text = filter(" ", transformed_text)
         return transformed_text
 
 def get_documents(client):
