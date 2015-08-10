@@ -20,12 +20,12 @@ def get_documents(client):
     news_events = client.raw_articles.news.find({"pubDate": {"$ne": "None"}}).sort("pubDate", -1).limit(1000)
     reuters_events = client.tr.articles.find({"newsMessage.itemSet.newsItem.itemMeta.versionCreated": {"$exists": True}}).sort("newsMessage.itemSet.newsItem.itemMeta.versionCreated", -1).limit(1000)
     for event in raw_events:
-        if "rawHTML" in event.keys():
-            if "id" in event["rawHTML"].keys():
-                tweet_id = "tweet_" + str(event["rawHTML"]["id"])
-                docs[tweet_id] = event["text"]
-                if "translatedText" in event.keys():
-                    docs[tweet_id] = event["translatedText"]
+        if "displayTweet" in event.keys():
+            if "id" in event["displayTweet"].keys():
+                tweet_id = "tweet_" + str(event["displayTweet"]["id"])
+                docs[tweet_id] = event["displayTweet"]["text"]
+                if "translatedText" in event["displayTweet"].keys():
+                    docs[tweet_id] = event["displayTweet"]["translatedText"]
     for news_event in news_events:
         docs[news_event["_id"]] = news_event["content"]
     for article in reuters_events:
