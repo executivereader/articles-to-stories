@@ -44,7 +44,7 @@ def get_documents(client):
         sentencestream.append(sentences_to_list(value))
     doclist = []
     for key, value in docs.iteritems():
-        doclist.append(TaggedDocument(words=sentences_to_list(value)),tags=[key])
+        doclist.append(TaggedDocument(words=sentences_to_list(value),tags=[key]))
     return doclist
 
 if __name__ == "__main__":
