@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # the contents of this file should be put in the user data field
 sudo apt-get update
-sudo apt-get install -y awscli git python-dev python-pip libopenblas-dev
+sudo apt-get install -y git python-dev python-pip libopenblas-dev liblapack-dev gfortran
 sudo mkfs -t ext4 /dev/xvdf
 sudo mkdir /data
 sudo mount /dev/xvdf /data
