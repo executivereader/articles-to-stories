@@ -21,14 +21,13 @@ def get_documents(client):
     for event in raw_events:
         if "displayTweet" in event.keys():
             if "id" in event["displayTweet"].keys():
-                tweet_id = "tweet_" + str(event["displayTweet"]["id"])
-                docs[tweet_id] = event["displayTweet"]["text"]
+                docs[str(event["_id"])] = event["displayTweet"]["text"]
                 if "translatedText" in event["displayTweet"].keys():
-                    docs[tweet_id] = event["displayTweet"]["translatedText"]
+                    docs[str(event["_id"])] = event["displayTweet"]["translatedText"]
     for news_event in news_events:
-        docs[news_event["_id"]] = news_event["content"]
+        docs[str(news_event["_id"])] = news_event["content"]
     for article in reuters_events:
-        docs[article["_id"]] = u""
+        docs[str(article["_id"])] = u""
         if article['newsMessage']['itemSet']['newsItem']['contentSet']['inlineXML']['html']['body']['p'] is not None:
             for paragraph in article['newsMessage']['itemSet']['newsItem']['contentSet']['inlineXML']['html']['body']['p']:
                 cleaned_paragraph = ""
