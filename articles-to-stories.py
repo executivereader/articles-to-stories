@@ -38,7 +38,7 @@ def get_documents(client):
                                 cleaned_paragraph = cleaned_paragraph + i
                             else:
                                 cleaned_paragrah = cleaned_paragraph + " "
-                docs[article["_id"]] = docs[article["_id"]] + " " + str(cleaned_paragraph).replace("\n"," ")
+                docs[str(article["_id"])] = docs[str(article["_id"])] + " " + str(cleaned_paragraph).replace("\n"," ")
     sentencestream = []
     for key, value in docs.iteritems():
         sentencestream.append(sentences_to_list(value))
