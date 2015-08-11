@@ -10,5 +10,7 @@ sudo cp /home/ubuntu/mongo-startup/update_replica_set.py /home/ubuntu/articles-t
 cd /home/ubuntu/articles-to-stories
 sudo wget https://s3.amazonaws.com/word2vec-googlenews/GoogleNews-vectors-negative300.bin.gz
 sudo pip install numpy scipy cython
-sudo pip install gensim pymongo
+sudo pip install pymongo
+sudo pip install scipy==0.15.1
+sudo pip install gensim==0.12.1
 sudo screen -dm bash -c "sudo python articles-to-stories.py"
