@@ -39,13 +39,27 @@ def get_documents(client):
                             else:
                                 cleaned_paragrah = cleaned_paragraph + " "
                 docs[str(article["_id"])] = docs[str(article["_id"])] + " " + str(cleaned_paragraph).replace("\n"," ")
-    sentencestream = []
-    for key, value in docs.iteritems():
-        sentencestream.append(sentences_to_list(value))
+    #sentencestream = [] # what is this part for?
+    #for key, value in docs.iteritems():
+    #    sentencestream.append(sentences_to_list(value))
     doclist = []
     for key, value in docs.iteritems():
         doclist.append(TaggedDocument(words=sentences_to_list(value),tags=[key]))
     return doclist
+
+def update_docvecs_in_collection(doc,docvec,collection):
+    collection.update(
+        {"_id": doc['_id']},
+        {"$set": {"docvec": docvec}},
+        upsert = False, multi = False)
+
+def update_docvecs(docs,model,client):
+    for doc in docs:
+        docvec = model.infer_vector(doc.words).tolist()
+        update_docvecs_in_collection(doc,docvec,client.dataminr.articles)
+        update_docvecs_in_collection(doc,docvec,client.raw_articles.news)
+        update_docvecs_in_collection(doc,docvec,client.tr.articles)
+        update_docvecs_in_collection(doc,docvec,client.production.articles)
 
 if __name__ == "__main__":
     epochs = 50
@@ -58,6 +72,4 @@ if __name__ == "__main__":
         while idx < epochs:
             model.train(docs)
             idx = idx + 1
-        
-        
-        
+        update_docvecs(docs,model,client)
