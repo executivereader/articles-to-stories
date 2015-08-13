@@ -1,5 +1,6 @@
 from update_replica_set import start_mongo_client
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
+from bson.objectid import ObjectId
 
 def sentences_to_list(text):
     if text is None:
