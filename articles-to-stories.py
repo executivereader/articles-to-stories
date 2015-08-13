@@ -50,7 +50,7 @@ def get_documents(client):
 
 def update_docvecs_in_collection(doc,docvec,collection):
     collection.update(
-        {"_id": doc['_id']},
+        {"_id": doc.tags[0]},
         {"$set": {"docvec": docvec}},
         upsert = False, multi = False)
 
