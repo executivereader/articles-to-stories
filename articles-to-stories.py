@@ -1,6 +1,10 @@
 from update_replica_set import start_mongo_client
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
 from bson.objectid import ObjectId
+from gridfs import GridFS
+from gridfs.errors import NoFile
+from sklearn import decomposition
+import pickle
 
 def sentences_to_list(text):
     if text is None:
@@ -48,6 +52,25 @@ def get_documents(client):
         doclist.append(TaggedDocument(words=sentences_to_list(value),tags=[key]))
     return doclist
 
+def initialize_doc2vec_model(docs,filename = None, intersect = None, epochs = None):
+    if filename is None:
+        filename = "GoogleNews-vectors-negative300.bin.gz"
+    if intersect is None:
+        intersect = True
+    if epochs is None:
+        epochs = 10
+    model = Doc2Vec(docs,size=300,negative=3,min_count=1,dm=1) # set dbow_words=1 if using dbow
+    if intersect:
+        try:
+            model.intersect_word2vec_format(filename)
+        except Exception:
+            pass
+    idx = 0
+    while idx < epochs:
+        model.train(docs) # might need to worry about the training rate here
+        idx = idx + 1
+    return model
+
 def update_docvecs_in_collection(doc,docvec,collection):
     collection.update(
         {"_id": ObjectId(doc.tags[0])},
@@ -62,15 +85,26 @@ def update_docvecs(docs,model,client):
         update_docvecs_in_collection(doc,docvec,client.tr.articles)
         update_docvecs_in_collection(doc,docvec,client.production.articles)
 
+def cluster_docs(docs,client,collectionname = None,filename = None):
+    if collectionname is None:
+        collectionname = "doc2vec"
+    if filename is None:
+        filename = "doc2vec_pca"
+    modelstore = GridFS(client.models,collection=collectionname)
+    try:
+        pca_model = pickle.loads(modelstore.get_version(filename=filename).read())
+    except NoFile:
+        pca_model = decomposition.RandomizedPCA(n_components=3)
+    for doc in docs:
+        # need to go through all the documents and get their principal components
+        # but is it best to use docs or should we re-run the query in mongo?
+    # now we'll need to do the actual clustering here
+
 if __name__ == "__main__":
     epochs = 50
     client = start_mongo_client()
     while 1:
         docs = get_documents(client)
-        model = Doc2Vec(docs,size=300,negative=3,min_count=1,dm=1) # set dbow_words=1 if using dbow
-        model.intersect_word2vec_format("GoogleNews-vectors-negative300.bin.gz", binary = True)
-        idx = 0
-        while idx < epochs:
-            model.train(docs)
-            idx = idx + 1
+        model = initialize_doc2vec_model(docs)
         update_docvecs(docs,model,client)
+        cluster_docs(docs,client)
