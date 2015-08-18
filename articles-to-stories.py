@@ -20,9 +20,9 @@ def get_documents(client):
     # get all the documents we're interested in from the mongo client
     # return them as a list of TaggedDocuments
     docs = {}
-    raw_events = client.dataminr.articles.find().sort("eventTime", -1).limit(10000)
-    news_events = client.raw_articles.news.find({"pubDate": {"$ne": "None"}}).sort("pubDate", -1).limit(1000)
-    reuters_events = client.tr.articles.find({"newsMessage.itemSet.newsItem.itemMeta.versionCreated": {"$exists": True}}).sort("newsMessage.itemSet.newsItem.itemMeta.versionCreated", -1).limit(1000)
+    raw_events = client.dataminr.articles.find().sort("eventTime", -1).limit(100000)
+    news_events = client.raw_articles.news.find({"pubDate": {"$ne": "None"}}).sort("pubDate", -1).limit(100000)
+    reuters_events = client.tr.articles.find({"newsMessage.itemSet.newsItem.itemMeta.versionCreated": {"$exists": True}}).sort("newsMessage.itemSet.newsItem.itemMeta.versionCreated", -1).limit(100000)
     for event in raw_events:
         if "displayTweet" in event.keys():
             if "id" in event["displayTweet"].keys():
@@ -71,19 +71,46 @@ def initialize_doc2vec_model(docs,filename = None, intersect = None, epochs = No
         idx = idx + 1
     return model
 
-def update_docvecs_in_collection(doc,docvec,collection):
+def update_field_in_collection(object_id,field,value,collection):
     collection.update(
-        {"_id": ObjectId(doc.tags[0])},
-        {"$set": {"docvec": docvec}},
+        {"_id": object_id},
+        {"$set": {field: value}},
         upsert = False, multi = False)
 
-def update_docvecs(docs,model,client):
+def update_field(object_id,field,value,client):
+    update_field_in_collection(object_id,field,value,client.dataminr.articles)
+    update_field_in_collection(object_id,field,value,client.raw_articles.articles)
+    update_field_in_collection(object_id,field,value,client.tr.articles)
+    update_field_in_collection(object_id,field,value,client.production.articles)
+
+def get_field_in_collection(object_id,field_name,collection):
+    try:
+        value = collection.find({"_id": object_id}).limit(1)[0][field_name]
+    except IndexError:
+        value = None
+    return value
+
+def get_field(object_id,field_name,client):
+    value = None
+    value = get_field_in_collection(object_id,field_name,client.dataminr.articles)
+    value = get_field_in_collection(object_id,field_name,client.raw_articles.articles)
+    value = get_field_in_collection(object_id,field_name,client.tr.articles)
+    value = get_field_in_collection(object_id,field_name,client.production.articles)
+    return value
+
+def update_docvecs(docs,d2v_model,client):
     for doc in docs:
-        docvec = model.infer_vector(doc.words).tolist()
-        update_docvecs_in_collection(doc,docvec,client.dataminr.articles)
-        update_docvecs_in_collection(doc,docvec,client.raw_articles.news)
-        update_docvecs_in_collection(doc,docvec,client.tr.articles)
-        update_docvecs_in_collection(doc,docvec,client.production.articles)
+        docvec = d2v_model.infer_vector(doc.words).tolist()
+        update_field(ObjectId(doc.tags[0]),"docvec",docvec,client)
+
+def update_pcavecs(docs,pca_model,client):
+    for doc in docs:
+        pcavec = None
+        docvec = get_field(ObjectId(doc.tags[0]),"docvec",client)
+        if docvec is not None:
+            pcavec = pca_model.transform(docvec)
+            if pcavec is not None:
+                update_field(ObjectId(doc.tags[0]),"pcavec",pcavec,client)
 
 def cluster_docs(docs,client,collectionname = None,filename = None):
     if collectionname is None:
@@ -95,10 +122,15 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
         pca_model = pickle.loads(modelstore.get_version(filename=filename).read())
     except NoFile:
         pca_model = decomposition.RandomizedPCA(n_components=3)
-    for doc in docs:
-        # need to go through all the documents and get their principal components
-        # but is it best to use docs or should we re-run the query in mongo?
-    # now we'll need to do the actual clustering here
+        training_data = []
+        for doc in docs:
+            try:
+                training_data.append(get_field(ObjectId(doc.tags[0]),"docvec",client))
+            except Exception:
+                pass
+        pca_model.train(training_data)
+        modelstore.put(pickle.dumps(pca_model),filename=filename)
+    update_pcavecs(docs,pca_model,client)
 
 if __name__ == "__main__":
     epochs = 50
