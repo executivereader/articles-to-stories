@@ -128,7 +128,7 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
                 training_data.append(get_field(ObjectId(doc.tags[0]),"docvec",client))
             except Exception:
                 pass
-        pca_model.train(training_data)
+        pca_model.fit(training_data)
         modelstore.put(pickle.dumps(pca_model),filename=filename)
     update_pcavecs(docs,pca_model,client)
 
