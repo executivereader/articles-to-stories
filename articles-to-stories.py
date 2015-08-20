@@ -34,16 +34,16 @@ def get_documents(client):
     for article in reuters_events:
         docs[str(article["_id"])] = u""
         if article['newsMessage']['itemSet']['newsItem']['contentSet']['inlineXML']['html']['body']['p'] is not None:
+            cleaned_paragraph = ""
             for paragraph in article['newsMessage']['itemSet']['newsItem']['contentSet']['inlineXML']['html']['body']['p']:
-                cleaned_paragraph = ""
                 if paragraph is not None:
                     for i in paragraph:
                         if i is not None:
                             if ord(i) < 128:
                                 cleaned_paragraph = cleaned_paragraph + i
                             else:
-                                cleaned_paragrah = cleaned_paragraph + " "
-                docs[str(article["_id"])] = docs[str(article["_id"])] + " " + str(cleaned_paragraph).replace("\n"," ")
+                                cleaned_paragraph = cleaned_paragraph + " "
+            docs[str(article["_id"])] = cleaned_paragraph.replace("\n"," ")
     #sentencestream = [] # what is this part for?
     #for key, value in docs.iteritems():
     #    sentencestream.append(sentences_to_list(value))
