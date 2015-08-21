@@ -21,9 +21,9 @@ def get_documents(client):
     # get all the documents we're interested in from the mongo client
     # return them as a list of TaggedDocuments
     docs = {}
-    raw_events = client.dataminr.articles.find().sort("eventTime", -1).limit(100000)
-    news_events = client.raw_articles.news.find({"pubDate": {"$ne": "None"}}).sort("pubDate", -1).limit(100000)
-    reuters_events = client.tr.articles.find({"newsMessage.itemSet.newsItem.itemMeta.versionCreated": {"$exists": True}}).sort("newsMessage.itemSet.newsItem.itemMeta.versionCreated", -1).limit(100000)
+    raw_events = client.dataminr.articles.find().sort("eventTime", -1).limit(10000)
+    news_events = client.raw_articles.news.find({"pubDate": {"$ne": "None"}}).sort("pubDate", -1).limit(1000)
+    reuters_events = client.tr.articles.find({"newsMessage.itemSet.newsItem.itemMeta.versionCreated": {"$exists": True}}).sort("newsMessage.itemSet.newsItem.itemMeta.versionCreated", -1).limit(1000)
     for event in raw_events:
         if "displayTweet" in event.keys():
             if "id" in event["displayTweet"].keys():
