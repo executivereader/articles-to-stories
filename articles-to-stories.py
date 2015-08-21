@@ -112,7 +112,10 @@ def update_pcavecs(docs,pca_model,client):
         pcavec = None
         docvec = get_field(ObjectId(doc.tags[0]),"docvec",client)
         if docvec is not None:
-            pcavec = pca_model.transform(docvec)
+            try:
+                pcavec = pca_model.transform(docvec)[0].tolist()
+            except Exception:
+                pass
             if pcavec is not None:
                 update_field(ObjectId(doc.tags[0]),"pcavec",pcavec,client)
 
@@ -126,16 +129,16 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
         pca_model = pickle.loads(modelstore.get_version(filename=filename).read())
     except NoFile:
         pca_model = decomposition.RandomizedPCA(n_components=3)
-        training_data = []
-        for doc in docs:
-            try:
-                doc_result = get_field(ObjectId(doc.tags[0]),"docvec",client)
-                if doc_result is not None:
-                    training_data.append(doc_result)
-            except Exception:
-                pass
-        pca_model.fit(training_data)
-        modelstore.put(pickle.dumps(pca_model),filename=filename)
+    training_data = []
+    for doc in docs:
+        try:
+            doc_result = get_field(ObjectId(doc.tags[0]),"docvec",client)
+            if doc_result is not None:
+                training_data.append(doc_result)
+        except Exception:
+            pass
+    pca_model.fit(training_data)
+    modelstore.put(pickle.dumps(pca_model),filename=filename)
     update_pcavecs(docs,pca_model,client)
 
 if __name__ == "__main__":
