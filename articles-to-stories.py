@@ -94,9 +94,12 @@ def get_field_in_collection(object_id,field_name,collection):
 def get_field(object_id,field_name,client):
     value = None
     value = get_field_in_collection(object_id,field_name,client.dataminr.articles)
-    value = get_field_in_collection(object_id,field_name,client.raw_articles.articles)
-    value = get_field_in_collection(object_id,field_name,client.tr.articles)
-    value = get_field_in_collection(object_id,field_name,client.production.articles)
+    if value is None:
+        value = get_field_in_collection(object_id,field_name,client.raw_articles.articles)
+        if value is None:
+            value = get_field_in_collection(object_id,field_name,client.tr.articles)
+            if value is None:
+                value = get_field_in_collection(object_id,field_name,client.production.articles)
     return value
 
 def update_docvecs(docs,d2v_model,client):
@@ -126,7 +129,9 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
         training_data = []
         for doc in docs:
             try:
-                training_data.append(get_field(ObjectId(doc.tags[0]),"docvec",client))
+                doc_result = get_field(ObjectId(doc.tags[0]),"docvec",client)
+                if doc_result is not None:
+                    training_data.append(doc_result)
             except Exception:
                 pass
         pca_model.fit(training_data)
