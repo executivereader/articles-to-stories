@@ -22,9 +22,11 @@ def get_documents(client):
     # get all the documents we're interested in from the mongo client
     # return them as a list of TaggedDocuments
     docs = {}
+    # perhaps the following should all be selected only if they don't already have a cluster?
     raw_events = client.dataminr.articles.find().sort("eventTime", -1).limit(10000)
     news_events = client.raw_articles.news.find({"pubDate": {"$ne": "None"}}).sort("pubDate", -1).limit(1000)
     reuters_events = client.tr.articles.find({"newsMessage.itemSet.newsItem.itemMeta.versionCreated": {"$exists": True}}).sort("newsMessage.itemSet.newsItem.itemMeta.versionCreated", -1).limit(1000)
+    production_events = client.production.articles.find().sort("pubDate", -1).limit(1000)
     for event in raw_events:
         if "displayTweet" in event.keys():
             if "id" in event["displayTweet"].keys():
@@ -46,9 +48,8 @@ def get_documents(client):
                             else:
                                 cleaned_paragraph = cleaned_paragraph + " "
             docs[str(article["_id"])] = cleaned_paragraph.replace("\n"," ")
-    #sentencestream = [] # what is this part for?
-    #for key, value in docs.iteritems():
-    #    sentencestream.append(sentences_to_list(value))
+    for production_event in production_events:
+        docs[str(production_event["_id"])] = production_event["content"]
     doclist = []
     for key, value in docs.iteritems():
         doclist.append(TaggedDocument(words=sentences_to_list(value),tags=[key]))
@@ -143,7 +144,28 @@ def pca_docs(docs,client,collectionname = None,filename = None):
     update_pcavecs(docs,pca_model,client)
 
 def get_vector6(object_id,client):
-    return None
+    timestamp = None
+    lat = None
+    lon = None
+    docvec1 = None
+    docvec2 = None
+    docvec3 = None
+    try:
+        event = client.dataminr.articles.find({"_id": object_id})[0]
+        # add code here to get the relevant data if it's a dataminr article
+    except IndexError:
+        try:
+            event = client.raw_articles.news.find({"_id": object_id})[0]
+            # add code here to get the relevant data if it's a scraped article
+        except IndexError:
+            try:
+                reuters_events = client.tr.articles.find({"_id": object_id})[0]
+                # add code here to get the relevant data if it's a reuters article
+            except IndexError:
+                try:
+                    production_events = client.production.articles.find({"_id": object_id})[0]
+                    # add code here to get the relevant data if it's a production article
+    return [timestamp,lat,lon,docvec1,docvec2,docvec3]
 
 def update_clusters(docs,cluster_model,client):
     return None
