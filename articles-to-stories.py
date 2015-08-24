@@ -4,6 +4,7 @@ from bson.objectid import ObjectId
 from gridfs import GridFS
 from gridfs.errors import NoFile
 from sklearn import decomposition
+from sklearn import cluster
 import pickle
 
 def sentences_to_list(text):
@@ -119,7 +120,7 @@ def update_pcavecs(docs,pca_model,client):
             if pcavec is not None:
                 update_field(ObjectId(doc.tags[0]),"pcavec",pcavec,client)
 
-def cluster_docs(docs,client,collectionname = None,filename = None):
+def pca_docs(docs,client,collectionname = None,filename = None):
     if collectionname is None:
         collectionname = "doc2vec"
     if filename is None:
@@ -141,6 +142,34 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
     modelstore.put(pickle.dumps(pca_model),filename=filename)
     update_pcavecs(docs,pca_model,client)
 
+def get_vector6(object_id,client):
+    return None
+
+def update_clusters(docs,cluster_model,client):
+    return None
+
+def cluster_docs(docs,client,collectionname = None,filename = None):
+    if collectionname is None:
+        collectionname = "doc2vec"
+    if filename is None:
+        filename = "doc2vec_clustering"
+    modelstore = GridFS(client.models,collection=collectionname)
+    try:
+        cluster_model = pickle.loads(modelstore.get_version(filename=filename).read())
+    except NoFile:
+        cluster_model = cluster.Birch(n_clusters = None)
+    training_data = []
+    for doc in docs:
+        try:
+            doc_result = get_vector6(ObjectId(doc.tags[0]),client)
+            if doc_result is not None:
+                training_data.append(doc_result)
+        except Exception:
+            pass
+    cluster_model.fit(training_data)
+    modelstore.put(pickle.dumps(cluster_model),filename=filename)
+    update_clusters(docs,cluster_model,client)
+
 if __name__ == "__main__":
     epochs = 50
     client = start_mongo_client()
@@ -148,4 +177,5 @@ if __name__ == "__main__":
         docs = get_documents(client)
         model = initialize_doc2vec_model(docs)
         update_docvecs(docs,model,client)
+        pca_docs(docs,client)
         cluster_docs(docs,client)
