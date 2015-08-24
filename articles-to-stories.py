@@ -147,12 +147,17 @@ def get_vector6(object_id,client):
     timestamp = None
     lat = None
     lon = None
-    docvec1 = None
-    docvec2 = None
-    docvec3 = None
+    pcavec1 = None
+    pcavec2 = None
+    pcavec3 = None
     try:
         event = client.dataminr.articles.find({"_id": object_id})[0]
-        # add code here to get the relevant data if it's a dataminr article
+        timestamp = event["displayTweet"]["eventTime"]
+        lat = event["eventLocation"][0]["coordinates"][0]
+        lon = event["eventLocation"][0]["coordinates"][1]
+        pcavec1 = event["pcavec"][0]
+        pcavec2 = event["pcavec"][1]
+        pcavec3 = event["pcavec"][2]
     except IndexError:
         try:
             event = client.raw_articles.news.find({"_id": object_id})[0]
@@ -165,7 +170,7 @@ def get_vector6(object_id,client):
                 try:
                     production_events = client.production.articles.find({"_id": object_id})[0]
                     # add code here to get the relevant data if it's a production article
-    return [timestamp,lat,lon,docvec1,docvec2,docvec3]
+    return [timestamp,lat,lon,pcavec1,pcavec2,pcavec3]
 
 def update_clusters(docs,cluster_model,client):
     return None
