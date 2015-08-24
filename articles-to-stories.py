@@ -152,16 +152,60 @@ def get_vector6(object_id,client):
     pcavec3 = None
     try:
         event = client.dataminr.articles.find({"_id": object_id})[0]
-        timestamp = event["displayTweet"]["eventTime"]
-        lat = event["eventLocation"][0]["coordinates"][0]
-        lon = event["eventLocation"][0]["coordinates"][1]
-        pcavec1 = event["pcavec"][0]
-        pcavec2 = event["pcavec"][1]
-        pcavec3 = event["pcavec"][2]
+        try:
+            timestamp = event["displayTweet"]["eventTime"]
+        except Exception:
+            return None
+        try:
+            lat = event["eventLocation"][0]["coordinates"][0]
+        except Exception:
+            return None
+        try:
+            lon = event["eventLocation"][0]["coordinates"][1]
+        except Exception:
+            return None
+        try:
+            pcavec1 = event["pcavec"][0]
+        except Exception:
+            return None
+        try:
+            pcavec2 = event["pcavec"][1]
+        except Exception:
+            return None
+        try:
+            pcavec3 = event["pcavec"][2]
+        except Exception:
+            return None
     except IndexError:
         try:
             event = client.raw_articles.news.find({"_id": object_id})[0]
-            # add code here to get the relevant data if it's a scraped article
+            try:
+                timestamp = datetime.strptime(event["pubDate"], "%Y-%m-%d %H:%M:%S")
+            except Exception:
+                try:
+                    timestamp = datetime.strptime(event["pubDate"], "%Y-%m-%d")
+                except Exception:
+                    return None
+            try:
+                lat = event["geos"][0][0]
+            except Exception:
+                return None
+            try:
+                lon = event["geos"][0][1]
+            except Exception:
+                return None
+            try:
+                pcavec1 = event["pcavec1"][0]
+            except Exception:
+                return None
+            try:
+                pcavec2 = event["pcavec2"][1]
+            except Exception:
+                return None
+            try:
+                pcavec3 = event["pcavec3"][2]
+            except Exception:
+                return None
         except IndexError:
             try:
                 reuters_events = client.tr.articles.find({"_id": object_id})[0]
