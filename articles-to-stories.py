@@ -6,6 +6,7 @@ from gridfs.errors import NoFile
 from sklearn import decomposition
 from sklearn import cluster
 import pickle
+import datetime
 
 def sentences_to_list(text):
     if text is None:
@@ -23,33 +24,9 @@ def get_documents(client):
     # return them as a list of TaggedDocuments
     docs = {}
     # perhaps the following should all be selected only if they don't already have a cluster?
-    raw_events = client.dataminr.articles.find().sort("eventTime", -1).limit(10000)
-    news_events = client.raw_articles.news.find({"pubDate": {"$ne": "None"}}).sort("pubDate", -1).limit(1000)
-    reuters_events = client.tr.articles.find({"newsMessage.itemSet.newsItem.itemMeta.versionCreated": {"$exists": True}}).sort("newsMessage.itemSet.newsItem.itemMeta.versionCreated", -1).limit(1000)
-    production_events = client.production.articles.find().sort("pubDate", -1).limit(1000)
-    for event in raw_events:
-        if "displayTweet" in event.keys():
-            if "id" in event["displayTweet"].keys():
-                docs[str(event["_id"])] = event["displayTweet"]["text"]
-                if "translatedText" in event["displayTweet"].keys():
-                    docs[str(event["_id"])] = event["displayTweet"]["translatedText"]
-    for news_event in news_events:
-        docs[str(news_event["_id"])] = news_event["content"]
-    for article in reuters_events:
-        docs[str(article["_id"])] = u""
-        if article['newsMessage']['itemSet']['newsItem']['contentSet']['inlineXML']['html']['body']['p'] is not None:
-            cleaned_paragraph = ""
-            for paragraph in article['newsMessage']['itemSet']['newsItem']['contentSet']['inlineXML']['html']['body']['p']:
-                if paragraph is not None:
-                    for i in paragraph:
-                        if i is not None:
-                            if ord(i) < 128:
-                                cleaned_paragraph = cleaned_paragraph + i
-                            else:
-                                cleaned_paragraph = cleaned_paragraph + " "
-            docs[str(article["_id"])] = cleaned_paragraph.replace("\n"," ")
-    for production_event in production_events:
-        docs[str(production_event["_id"])] = production_event["content"]
+    staging_events = client.production.staging.find().sort("pubDate", -1).limit(1000)
+    for staging_event in staging_events:
+        docs[str(staging_event["_id"])] = staging_event["content"]
     doclist = []
     for key, value in docs.iteritems():
         doclist.append(TaggedDocument(words=sentences_to_list(value),tags=[key]))
@@ -81,10 +58,7 @@ def update_field_in_collection(object_id,field,value,collection):
         upsert = False, multi = False)
 
 def update_field(object_id,field,value,client):
-    update_field_in_collection(object_id,field,value,client.dataminr.articles)
-    update_field_in_collection(object_id,field,value,client.raw_articles.articles)
-    update_field_in_collection(object_id,field,value,client.tr.articles)
-    update_field_in_collection(object_id,field,value,client.production.articles)
+    update_field_in_collection(object_id,field,value,client.production.staging)
 
 def get_field_in_collection(object_id,field_name,collection):
     try:
@@ -95,13 +69,7 @@ def get_field_in_collection(object_id,field_name,collection):
 
 def get_field(object_id,field_name,client):
     value = None
-    value = get_field_in_collection(object_id,field_name,client.dataminr.articles)
-    if value is None:
-        value = get_field_in_collection(object_id,field_name,client.raw_articles.articles)
-        if value is None:
-            value = get_field_in_collection(object_id,field_name,client.tr.articles)
-            if value is None:
-                value = get_field_in_collection(object_id,field_name,client.production.articles)
+    value = get_field_in_collection(object_id,field_name,client.production.staging)
     return value
 
 def update_docvecs(docs,d2v_model,client):
@@ -151,69 +119,17 @@ def get_vector6(object_id,client):
     pcavec2 = None
     pcavec3 = None
     try:
-        event = client.dataminr.articles.find({"_id": object_id})[0]
-        try:
-            timestamp = event["displayTweet"]["eventTime"]
-        except Exception:
-            return None
-        try:
-            lat = event["eventLocation"][0]["coordinates"][0]
-        except Exception:
-            return None
-        try:
-            lon = event["eventLocation"][0]["coordinates"][1]
-        except Exception:
-            return None
-        try:
-            pcavec1 = event["pcavec"][0]
-        except Exception:
-            return None
-        try:
-            pcavec2 = event["pcavec"][1]
-        except Exception:
-            return None
-        try:
-            pcavec3 = event["pcavec"][2]
-        except Exception:
-            return None
+        event = client.production.staging.find({"_id": object_id})[0]
     except IndexError:
-        try:
-            event = client.raw_articles.news.find({"_id": object_id})[0]
-            try:
-                timestamp = datetime.strptime(event["pubDate"], "%Y-%m-%d %H:%M:%S")
-            except Exception:
-                try:
-                    timestamp = datetime.strptime(event["pubDate"], "%Y-%m-%d")
-                except Exception:
-                    return None
-            try:
-                lat = event["geos"][0][0]
-            except Exception:
-                return None
-            try:
-                lon = event["geos"][0][1]
-            except Exception:
-                return None
-            try:
-                pcavec1 = event["pcavec1"][0]
-            except Exception:
-                return None
-            try:
-                pcavec2 = event["pcavec2"][1]
-            except Exception:
-                return None
-            try:
-                pcavec3 = event["pcavec3"][2]
-            except Exception:
-                return None
-        except IndexError:
-            try:
-                reuters_events = client.tr.articles.find({"_id": object_id})[0]
-                # add code here to get the relevant data if it's a reuters article
-            except IndexError:
-                try:
-                    production_events = client.production.articles.find({"_id": object_id})[0]
-                    # add code here to get the relevant data if it's a production article
+        return None
+    epoch = datetime.datetime.utcfromtimestamp(0)
+    delta = event["dateProcessed_ER"] - epoch # this may not be the best timestamp to use but meh
+    timestamp = delta.total_seconds()
+    lat = event["geos"][1]
+    lon = event["geos"][0]
+    pcavec1 = event["pcavec"][0]
+    pcavec2 = event["pcavec"][1]
+    pcavec3 = event["pcavec"][2]
     return [timestamp,lat,lon,pcavec1,pcavec2,pcavec3]
 
 def update_clusters(docs,cluster_model,client):
