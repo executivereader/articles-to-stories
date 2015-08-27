@@ -130,9 +130,12 @@ def get_vector6(object_id,client):
         geos = event["geos"]
     except KeyError:
         return None
-    if len(geos) > 0:
-        while isinstance(geos[0],list): # get the first coordinate pair in a list of lists
-            geos = geos[0]
+    if len(geos) == 0:
+        return None
+    while isinstance(geos[0],list): # get the first coordinate pair in a list of lists
+        geos = geos[0]
+    if len(geos) < 2:
+        return None
     if isinstance(geos[1],float):
         lat = geos[1]
     else:
