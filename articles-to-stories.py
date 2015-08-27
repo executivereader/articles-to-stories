@@ -156,6 +156,7 @@ def get_vector6(object_id,client):
 
 def update_clusters(docs,cluster_model,client):
     for doc in docs:
+        print doc.tags[0]
         vector = get_vector6(ObjectId(doc.tags[0]),client)
         if vector is not None:
             if len(vector) == 6:
