@@ -157,13 +157,18 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
 
 if __name__ == "__main__":
     epochs = 50
+    print "Initializing Mongo client"
     client = start_mongo_client()
+    print "Initializing doc2vec model"
     docs = iterator_to_docs(client.production.staging.find({}).sort("dateProcessed_ER", -1).limit(1000))
     model = initialize_doc2vec_model(docs)
     while 1:
+        print "Updating document vectors"
         docs = iterator_to_docs(client.production.staging.find({"docvec": {"$exists": False}}).sort("dateProcessed_ER", -1).limit(1000))
         update_docvecs(docs,model,client)
+        print "Updating PCA vectors"
         docs = iterator_to_docs(client.production.staging.find({"pcavec": {"$exists": False}, "docvec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(1000))
         pca_docs(docs,client)
+        print "Updating clusters"
         docs = iterator_to_docs(client.production.staging.find({"story": {"$exists": False}, "pcavec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(1000))
         cluster_docs(docs,client)
