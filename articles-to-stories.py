@@ -19,14 +19,12 @@ def sentences_to_list(text):
         transformed_text = filter(None, transformed_text)
         return transformed_text
 
-def get_documents(client):
+def iterator_to_docs(iterator):
     # get all the documents we're interested in from the mongo client
     # return them as a list of TaggedDocuments
     docs = {}
-    # perhaps the following should all be selected only if they don't already have a cluster?
-    staging_events = client.production.staging.find().sort("pubDate", -1).limit(1000)
-    for staging_event in staging_events:
-        docs[str(staging_event["_id"])] = staging_event["content"]
+    for document in iterator:
+        docs[str(document["_id"])] = document["content"]
     doclist = []
     for key, value in docs.iteritems():
         doclist.append(TaggedDocument(words=sentences_to_list(value),tags=[key]))
@@ -160,9 +158,12 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
 if __name__ == "__main__":
     epochs = 50
     client = start_mongo_client()
+    docs = iterator_to_docs(client.production.staging.find({}).sort("dateProcessed_ER", -1).limit(1000))
+    model = initialize_doc2vec_model(docs)
     while 1:
-        docs = get_documents(client)
-        model = initialize_doc2vec_model(docs)
+        docs = iterator_to_docs(client.production.staging.find({"docvec": {"$exists": False}}).sort("dateProcessed_ER", -1).limit(1000))
         update_docvecs(docs,model,client)
+        docs = iterator_to_docs(client.production.staging.find({"pcavec": {"$exists": False}, "docvec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(1000))
         pca_docs(docs,client)
+        docs = iterator_to_docs(client.production.staging.find({"story": {"$exists": False}, "pcavec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(1000))
         cluster_docs(docs,client)
