@@ -149,7 +149,9 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
             doc_result = get_vector6(ObjectId(doc.tags[0]),client)
             if doc_result is not None:
                 training_data.append(doc_result)
+                print doc_result
         except Exception:
+            print "Could not get vector6"
             pass
     cluster_model.fit(training_data)
     modelstore.put(pickle.dumps(cluster_model),filename=filename)
