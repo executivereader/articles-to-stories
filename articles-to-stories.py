@@ -120,14 +120,38 @@ def get_vector6(object_id,client):
         event = client.production.staging.find({"_id": object_id})[0]
     except IndexError:
         return None
-    epoch = datetime.datetime.utcfromtimestamp(0)
-    delta = event["dateProcessed_ER"] - epoch # this may not be the best timestamp to use but meh
-    timestamp = delta.total_seconds()
-    lat = event["geos"][1]
-    lon = event["geos"][0]
-    pcavec1 = event["pcavec"][0]
-    pcavec2 = event["pcavec"][1]
-    pcavec3 = event["pcavec"][2]
+    try:
+        epoch = datetime.datetime.utcfromtimestamp(0)
+        delta = event["dateProcessed_ER"] - epoch # this may not be the best timestamp to use but meh
+        timestamp = delta.total_seconds()
+    except Exception:
+        return None
+    try:
+        geos = event["geos"]
+    except KeyError:
+        return None
+    while isinstance(geos[0],list): # get the first coordinate pair in a list of lists
+        geos = geos[0]
+    if isinstance(geos[1],float):
+        lat = geos[1]
+    else:
+        return None
+    if isinstance(geos[0],float):
+        lon = geos[0]
+    else:
+        return None
+    try:
+        pcavec1 = event["pcavec"][0]
+    except KeyError:
+        return None
+    try:
+        pcavec2 = event["pcavec"][1]
+    except KeyError:
+        return None
+    try:
+        pcavec3 = event["pcavec"][2]
+    except KeyError:
+        return None
     return [timestamp,lat,lon,pcavec1,pcavec2,pcavec3]
 
 def update_clusters(docs,cluster_model,client):
