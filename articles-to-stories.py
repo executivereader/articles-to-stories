@@ -63,7 +63,7 @@ def update_field(object_id,field,value,client):
 def get_field_in_collection(object_id,field_name,collection):
     try:
         value = collection.find({"_id": object_id}).limit(1)[0][field_name]
-    except IndexError:
+    except IndexError, KeyError:
         value = None
     return value
 
