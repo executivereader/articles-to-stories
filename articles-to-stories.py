@@ -155,7 +155,12 @@ def get_vector6(object_id,client):
     return [timestamp,lat,lon,pcavec1,pcavec2,pcavec3]
 
 def update_clusters(docs,cluster_model,client):
-    return None
+    for doc in docs:
+        vector = get_vector6(ObjectId(doc.tags[0]),client)
+        if vector is not None:
+            if len(vector) == 6:
+                prediction = cluster_model.predict(vector).tolist()
+                update_field(ObjectId(doc.tags[0]),"story",prediction,client)
 
 def cluster_docs(docs,client,collectionname = None,filename = None):
     if collectionname is None:
