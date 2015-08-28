@@ -7,6 +7,7 @@ from sklearn import decomposition
 from sklearn import cluster
 import pickle
 import datetime
+import time
 
 PCAVECTORSIZE = 20
 
@@ -197,12 +198,16 @@ if __name__ == "__main__":
     docs = iterator_to_docs(client.production.staging.find({}).sort("dateProcessed_ER", -1).limit(5000))
     model = initialize_doc2vec_model(docs)
     while 1:
-        print "Updating document vectors"
-        docs = iterator_to_docs(client.production.staging.find({"docvec": {"$exists": False}}).sort("dateProcessed_ER", -1).limit(5000))
-        update_docvecs(docs,model,client)
-        print "Updating PCA vectors"
-        docs = iterator_to_docs(client.production.staging.find({"pcavec": {"$exists": False}, "docvec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
-        pca_docs(docs,client)
-        print "Updating clusters"
-        docs = iterator_to_docs(client.production.staging.find({"story": {"$exists": False}, "pcavec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
-        cluster_docs(docs,client)
+        try:
+            print "Updating document vectors"
+            docs = iterator_to_docs(client.production.staging.find({"docvec": {"$exists": False}}).sort("dateProcessed_ER", -1).limit(5000))
+            update_docvecs(docs,model,client)
+            print "Updating PCA vectors"
+            docs = iterator_to_docs(client.production.staging.find({"pcavec": {"$exists": False}, "docvec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
+            pca_docs(docs,client)
+            print "Updating clusters"
+            docs = iterator_to_docs(client.production.staging.find("pcavec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
+            cluster_docs(docs,client)
+        except Exception:
+            pass
+        time.sleep(5)
