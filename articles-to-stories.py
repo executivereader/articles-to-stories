@@ -170,7 +170,7 @@ def update_clusters(docs,cluster_model,client):
         vector = get_field(ObjectId(doc.tags[0]),"pcavec",client)
         if vector is not None:
             if len(vector) == PCAVECTORSIZE:
-                prediction = cluster_model.fit_predict(vector).tolist()
+                prediction = cluster_model.predict(vector).tolist()
                 update_field(ObjectId(doc.tags[0]),"story",prediction,client)
 
 def cluster_docs(docs,client,collectionname = None,filename = None):
@@ -182,7 +182,7 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
     try:
         cluster_model = pickle.loads(modelstore.get_version(filename=filename).read())
     except NoFile:
-        cluster_model = cluster.DBSCAN(eps=0.5,min_samples=5)
+        cluster_model = cluster.Birch(n_clusters=None)
     training_data = []
     for doc in docs:
         try:
