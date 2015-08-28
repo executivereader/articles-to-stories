@@ -206,7 +206,7 @@ if __name__ == "__main__":
             docs = iterator_to_docs(client.production.staging.find({"pcavec": {"$exists": False}, "docvec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
             pca_docs(docs,client)
             print "Updating clusters"
-            docs = iterator_to_docs(client.production.staging.find("pcavec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
+            docs = iterator_to_docs(client.production.staging.find({"pcavec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
             cluster_docs(docs,client)
         except Exception:
             pass
