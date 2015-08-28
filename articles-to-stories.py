@@ -170,7 +170,7 @@ def update_clusters(docs,cluster_model,client):
         vector = get_field(ObjectId(doc.tags[0]),"pcavec",client)
         if vector is not None:
             if len(vector) == PCAVECTORSIZE:
-                prediction = cluster_model.transform(vector).tolist()
+                prediction = cluster_model.fit_predict(vector).tolist()
                 update_field(ObjectId(doc.tags[0]),"story",prediction,client)
 
 def cluster_docs(docs,client,collectionname = None,filename = None):
