@@ -5,6 +5,7 @@ from gridfs import GridFS
 from gridfs.errors import NoFile
 from sklearn import decomposition
 from sklearn import cluster
+from sklearn.preprocessing import normalize
 import pickle
 import datetime
 import time
@@ -84,7 +85,7 @@ def update_pcavecs(docs,pca_model,client):
         docvec = get_field(ObjectId(doc.tags[0]),"docvec",client)
         if docvec is not None:
             try:
-                pcavec = pca_model.transform(docvec)[0].tolist()
+                pcavec = pca_model.transform(normalize(docvec))[0].tolist()
             except Exception:
                 pass
             if pcavec is not None:
@@ -107,7 +108,7 @@ def pca_docs(docs,client,collectionname = None,filename = None):
         try:
             doc_result = get_field(ObjectId(doc.tags[0]),"docvec",client)
             if doc_result is not None:
-                training_data.append(doc_result)
+                training_data.append(normalize(doc_result))
         except Exception:
             pass
     pca_model.fit(training_data)
@@ -155,7 +156,7 @@ def get_vector(object_id,client):
     if len(returnlist) != PCAVECTORSIZE + 3:
         return None
     else:
-        return returnlist
+        return normalize(returnlist)
 
 def update_clusters(docs,cluster_model,client):
     for doc in docs:
