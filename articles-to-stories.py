@@ -10,7 +10,7 @@ import pickle
 import datetime
 import time
 
-PCAVECTORSIZE = 10
+PCAVECTORSIZE = 20
 
 def sentences_to_list(text):
     if text is None:
