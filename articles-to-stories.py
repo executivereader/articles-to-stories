@@ -8,6 +8,8 @@ from sklearn import cluster
 import pickle
 import datetime
 
+PCAVECTORSIZE = 20
+
 def sentences_to_list(text):
     if text is None:
         return []
@@ -96,7 +98,9 @@ def pca_docs(docs,client,collectionname = None,filename = None):
     try:
         pca_model = pickle.loads(modelstore.get_version(filename=filename).read())
     except NoFile:
-        pca_model = decomposition.RandomizedPCA(n_components=3)
+        pca_model = decomposition.RandomizedPCA(n_components=PCAVECTORSIZE)
+    if pca_model.n_components != PCAVECTORSIZE:
+        pca_model = decomposition.RandomizedPCA(n_components=PCAVECTORSIZE)
     training_data = []
     for doc in docs:
         try:
@@ -109,13 +113,10 @@ def pca_docs(docs,client,collectionname = None,filename = None):
     modelstore.put(pickle.dumps(pca_model),filename=filename)
     update_pcavecs(docs,pca_model,client)
 
-def get_vector6(object_id,client):
+def get_vector(object_id,client):
     timestamp = None
     lat = None
     lon = None
-    pcavec1 = None
-    pcavec2 = None
-    pcavec3 = None
     try:
         event = client.production.staging.find({"_id": object_id})[0]
     except IndexError:
@@ -144,26 +145,23 @@ def get_vector6(object_id,client):
         lon = geos[0]
     else:
         return None
-    try:
-        pcavec1 = event["pcavec"][0]
-    except KeyError:
+    returnlist = [timestamp,lat,lon]
+    for pca_element in event["pcavec"]:
+        try:
+            returnlist.append(pca_element)
+        except Exception:
+            return None
+    if len(returnlist) != PCAVECTORSIZE + 3:
         return None
-    try:
-        pcavec2 = event["pcavec"][1]
-    except KeyError:
-        return None
-    try:
-        pcavec3 = event["pcavec"][2]
-    except KeyError:
-        return None
-    return [timestamp,lat,lon,pcavec1,pcavec2,pcavec3]
+    else:
+        return returnlist
 
 def update_clusters(docs,cluster_model,client):
     for doc in docs:
         print doc.tags[0]
-        vector = get_vector6(ObjectId(doc.tags[0]),client)
+        vector = get_vector(ObjectId(doc.tags[0]),client)
         if vector is not None:
-            if len(vector) == 6:
+            if len(vector) == PCAVECTORSIZE + 3:
                 prediction = cluster_model.predict(vector).tolist()
                 update_field(ObjectId(doc.tags[0]),"story",prediction,client)
 
@@ -180,12 +178,12 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
     training_data = []
     for doc in docs:
         try:
-            doc_result = get_vector6(ObjectId(doc.tags[0]),client)
+            doc_result = get_vector(ObjectId(doc.tags[0]),client)
             if doc_result is not None:
                 training_data.append(doc_result)
                 print doc_result
         except Exception:
-            print "Could not get vector6"
+            print "Could not get vector"
             pass
     cluster_model.fit(training_data)
     modelstore.put(pickle.dumps(cluster_model),filename=filename)
@@ -196,15 +194,15 @@ if __name__ == "__main__":
     print "Initializing Mongo client"
     client = start_mongo_client()
     print "Initializing doc2vec model"
-    docs = iterator_to_docs(client.production.staging.find({}).sort("dateProcessed_ER", -1).limit(1000))
+    docs = iterator_to_docs(client.production.staging.find({}).sort("dateProcessed_ER", -1).limit(5000))
     model = initialize_doc2vec_model(docs)
     while 1:
         print "Updating document vectors"
-        docs = iterator_to_docs(client.production.staging.find({"docvec": {"$exists": False}}).sort("dateProcessed_ER", -1).limit(1000))
+        docs = iterator_to_docs(client.production.staging.find({"docvec": {"$exists": False}}).sort("dateProcessed_ER", -1).limit(5000))
         update_docvecs(docs,model,client)
         print "Updating PCA vectors"
-        docs = iterator_to_docs(client.production.staging.find({"pcavec": {"$exists": False}, "docvec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(1000))
+        docs = iterator_to_docs(client.production.staging.find({"pcavec": {"$exists": False}, "docvec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
         pca_docs(docs,client)
         print "Updating clusters"
-        docs = iterator_to_docs(client.production.staging.find({"story": {"$exists": False}, "pcavec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(1000))
+        docs = iterator_to_docs(client.production.staging.find({"story": {"$exists": False}, "pcavec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
         cluster_docs(docs,client)
