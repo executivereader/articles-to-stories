@@ -182,7 +182,7 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
     try:
         cluster_model = pickle.loads(modelstore.get_version(filename=filename).read())
     except NoFile:
-        cluster_model = cluster.Birch(n_clusters=None)
+        cluster_model = cluster.KMeans(n_clusters=50)
     training_data = []
     for doc in docs:
         try:
