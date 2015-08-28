@@ -5,7 +5,7 @@ from gridfs import GridFS
 from gridfs.errors import NoFile
 from sklearn import decomposition
 from sklearn import cluster
-from sklearn.preprocessing import normalize
+from sklearn.preprocessing import StandardScaler
 import pickle
 import datetime
 import time
@@ -79,42 +79,6 @@ def update_docvecs(docs,d2v_model,client):
         docvec = d2v_model.infer_vector(doc.words).tolist()
         update_field(ObjectId(doc.tags[0]),"docvec",docvec,client)
 
-def update_pcavecs(docs,pca_model,client):
-    for doc in docs:
-        pcavec = None
-        docvec = get_field(ObjectId(doc.tags[0]),"docvec",client)
-        if docvec is not None:
-            try:
-                pcavec = pca_model.transform(normalize(docvec))[0].tolist()
-            except Exception:
-                pass
-            if pcavec is not None:
-                update_field(ObjectId(doc.tags[0]),"pcavec",pcavec,client)
-
-def pca_docs(docs,client,collectionname = None,filename = None):
-    if collectionname is None:
-        collectionname = "doc2vec"
-    if filename is None:
-        filename = "doc2vec_pca"
-    modelstore = GridFS(client.models,collection=collectionname)
-    try:
-        pca_model = pickle.loads(modelstore.get_version(filename=filename).read())
-    except NoFile:
-        pca_model = decomposition.RandomizedPCA(n_components=PCAVECTORSIZE)
-    if pca_model.n_components != PCAVECTORSIZE:
-        pca_model = decomposition.RandomizedPCA(n_components=PCAVECTORSIZE)
-    training_data = []
-    for doc in docs:
-        try:
-            doc_result = get_field(ObjectId(doc.tags[0]),"docvec",client)
-            if doc_result is not None:
-                training_data.append(doc_result)
-        except Exception:
-            pass
-    pca_model.fit(normalize(training_data))
-    modelstore.put(pickle.dumps(pca_model),filename=filename)
-    update_pcavecs(docs,pca_model,client)
-
 def get_vector(object_id,client):
     timestamp = None
     lat = None
@@ -148,22 +112,65 @@ def get_vector(object_id,client):
     else:
         return None
     returnlist = [timestamp,lat,lon]
-    for pca_element in event["pcavec"]:
+    for docvec_element in event["docvec"]:
         try:
-            returnlist.append(pca_element)
+            returnlist.append(docvec_element)
         except Exception:
             return None
     if len(returnlist) != PCAVECTORSIZE + 3:
         return None
     else:
-        return normalize(returnlist)
+        return returnlist
+
+def update_pcavecs(docs,pca_model,client):
+    for doc in docs:
+        pcavec = None
+        docvec = get_field(ObjectId(doc.tags[0]),"docvec",client)
+        if docvec is not None:
+            try:
+                pcavec = pca_model.transform(normalize(docvec))[0].tolist()
+            except Exception:
+                pass
+            if pcavec is not None:
+                update_field(ObjectId(doc.tags[0]),"pcavec",pcavec,client)
+
+def pca_docs(docs,client,collectionname = None,filename = None,scalerfilename = None):
+    if collectionname is None:
+        collectionname = "doc2vec"
+    if filename is None:
+        filename = "doc2vec_pca"
+    if scalerfilename is None:
+        scalerfilename = "doc2vec_pca_scaler"
+    modelstore = GridFS(client.models,collection=collectionname)
+    try:
+        pca_model = pickle.loads(modelstore.get_version(filename=filename).read())
+    except NoFile:
+        pca_model = decomposition.RandomizedPCA(n_components=PCAVECTORSIZE)
+    if pca_model.n_components != PCAVECTORSIZE:
+        pca_model = decomposition.RandomizedPCA(n_components=PCAVECTORSIZE)
+    training_data = []
+    for doc in docs:
+        try:
+            doc_result = get_vector(ObjectId(doc.tags[0]),client)
+            if doc_result is not None:
+                training_data.append(doc_result)
+        except Exception:
+            pass
+    try:
+        scaler = pickle.loads(modelstore.get_version(filename=scalerfilename).read())
+    except NoFile:
+        scaler = StandardScaler()
+    scaler.fit(training_data)
+    pca_model.fit(scaler.transform(training_data))
+    modelstore.put(pickle.dumps(pca_model),filename=filename)
+    update_pcavecs(docs,pca_model,client)
 
 def update_clusters(docs,cluster_model,client):
     for doc in docs:
         print doc.tags[0]
-        vector = get_vector(ObjectId(doc.tags[0]),client)
+        vector = get_field(ObjectId(doc.tags[0]),"pcavec",client)
         if vector is not None:
-            if len(vector) == PCAVECTORSIZE + 3:
+            if len(vector) == PCAVECTORSIZE:
                 prediction = cluster_model.predict(vector).tolist()
                 update_field(ObjectId(doc.tags[0]),"story",prediction,client)
 
@@ -180,7 +187,7 @@ def cluster_docs(docs,client,collectionname = None,filename = None):
     training_data = []
     for doc in docs:
         try:
-            doc_result = get_vector(ObjectId(doc.tags[0]),client)
+            doc_result = get_field(ObjectId(doc.tags[0]),"pcavec",client)
             if doc_result is not None:
                 training_data.append(doc_result)
                 print doc_result
