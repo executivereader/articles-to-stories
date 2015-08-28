@@ -120,13 +120,13 @@ def get_vector(object_id,client):
     else:
         return returnlist
 
-def update_pcavecs(docs,pca_model,client):
+def update_pcavecs(docs,pca_model,scaler,client):
     for doc in docs:
         pcavec = None
-        docvec = get_field(ObjectId(doc.tags[0]),"docvec",client)
-        if docvec is not None:
+        vector = get_vector(ObjectId(doc.tags[0]),client)
+        if vector is not None:
             try:
-                pcavec = pca_model.transform(normalize(docvec))[0].tolist()
+                pcavec = pca_model.transform(scaler.transform(vector))[0].tolist()
             except Exception:
                 pass
             if pcavec is not None:
@@ -161,7 +161,8 @@ def pca_docs(docs,client,collectionname = None,filename = None,scalerfilename = 
     scaler.fit(training_data)
     pca_model.fit(scaler.transform(training_data))
     modelstore.put(pickle.dumps(pca_model),filename=filename)
-    update_pcavecs(docs,pca_model,client)
+    modelstore.put(pickle.dumps(scaler),filename=scalerfilename)
+    update_pcavecs(docs,pca_model,scaler,client)
 
 def update_clusters(docs,cluster_model,client):
     for doc in docs:
