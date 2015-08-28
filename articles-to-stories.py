@@ -117,8 +117,6 @@ def get_vector(object_id,client):
             returnlist.append(docvec_element)
         except Exception:
             return None
-    if len(returnlist) != PCAVECTORSIZE + 3:
-        return None
     else:
         return returnlist
 
