@@ -202,12 +202,18 @@ if __name__ == "__main__":
             print "Updating document vectors"
             docs = iterator_to_docs(client.production.staging.find({"docvec": {"$exists": False}}).sort("dateProcessed_ER", -1).limit(5000))
             update_docvecs(docs,model,client)
+        except Exception:
+            print "Did not update document vectors"
+        try:
             print "Updating PCA vectors"
             docs = iterator_to_docs(client.production.staging.find({"pcavec": {"$exists": False}, "docvec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
             pca_docs(docs,client)
+        except Exception:
+            print "Did not update PCA vectors"
+        try:
             print "Updating clusters"
             docs = iterator_to_docs(client.production.staging.find({"pcavec": {"$exists": True}}).sort("dateProcessed_ER", -1).limit(5000))
             cluster_docs(docs,client)
         except Exception:
-            pass
+            print "Did not update clusters"
         time.sleep(5)
