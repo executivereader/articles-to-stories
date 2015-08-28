@@ -108,10 +108,10 @@ def pca_docs(docs,client,collectionname = None,filename = None):
         try:
             doc_result = get_field(ObjectId(doc.tags[0]),"docvec",client)
             if doc_result is not None:
-                training_data.append(normalize(doc_result))
+                training_data.append(doc_result)
         except Exception:
             pass
-    pca_model.fit(training_data)
+    pca_model.fit(normalize(training_data))
     modelstore.put(pickle.dumps(pca_model),filename=filename)
     update_pcavecs(docs,pca_model,client)
 
