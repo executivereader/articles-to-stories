@@ -123,7 +123,7 @@ def get_vector(object_id,client):
 def update_pcavecs(docs,pca_model,client):
     for doc in docs:
         pcavec = None
-        vector = get_field(ObjectId(doc.tags[0]),"docvec",docvec,client)
+        vector = get_field(ObjectId(doc.tags[0]),"docvec",client)
         if vector is not None:
             try:
                 pcavec = pca_model.transform(vector)[0].tolist()
@@ -147,7 +147,7 @@ def pca_docs(docs,client,collectionname = None,filename = None):
     training_data = []
     for doc in docs:
         try:
-            doc_result = get_field(ObjectId(doc.tags[0]),"docvec",docvec,client)
+            doc_result = get_field(ObjectId(doc.tags[0]),"docvec",client)
             if doc_result is not None:
                 training_data.append(doc_result)
         except Exception:
