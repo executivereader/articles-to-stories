@@ -120,25 +120,23 @@ def get_vector(object_id,client):
     else:
         return returnlist
 
-def update_pcavecs(docs,pca_model,scaler,client):
+def update_pcavecs(docs,pca_model,client):
     for doc in docs:
         pcavec = None
-        vector = get_vector(ObjectId(doc.tags[0]),client)
+        vector = get_field(ObjectId(doc.tags[0]),"docvec",docvec,client)
         if vector is not None:
             try:
-                pcavec = pca_model.transform(scaler.transform(vector))[0].tolist()
+                pcavec = pca_model.transform(vector)[0].tolist()
             except Exception:
                 pass
             if pcavec is not None:
                 update_field(ObjectId(doc.tags[0]),"pcavec",pcavec,client)
 
-def pca_docs(docs,client,collectionname = None,filename = None,scalerfilename = None):
+def pca_docs(docs,client,collectionname = None,filename = None):
     if collectionname is None:
         collectionname = "doc2vec"
     if filename is None:
         filename = "doc2vec_pca"
-    if scalerfilename is None:
-        scalerfilename = "doc2vec_pca_scaler"
     modelstore = GridFS(client.models,collection=collectionname)
     try:
         pca_model = pickle.loads(modelstore.get_version(filename=filename).read())
@@ -149,20 +147,14 @@ def pca_docs(docs,client,collectionname = None,filename = None,scalerfilename = 
     training_data = []
     for doc in docs:
         try:
-            doc_result = get_vector(ObjectId(doc.tags[0]),client)
+            doc_result = get_field(ObjectId(doc.tags[0]),"docvec",docvec,client)
             if doc_result is not None:
                 training_data.append(doc_result)
         except Exception:
             pass
-    try:
-        scaler = pickle.loads(modelstore.get_version(filename=scalerfilename).read())
-    except NoFile:
-        scaler = StandardScaler()
-    scaler.fit(training_data)
-    pca_model.fit(scaler.transform(training_data))
+    pca_model.fit(training_data)
     modelstore.put(pickle.dumps(pca_model),filename=filename)
-    modelstore.put(pickle.dumps(scaler),filename=scalerfilename)
-    update_pcavecs(docs,pca_model,scaler,client)
+    update_pcavecs(docs,pca_model,client)
 
 def update_clusters(docs,cluster_model,client):
     for doc in docs:
